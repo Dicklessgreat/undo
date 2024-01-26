@@ -230,15 +230,19 @@ impl<E, const N: usize, S> History<E, N, S> {
         let mut dest = self.nil_replace(to)?;
 
         let mut i = dest.parent.root;
-        let mut path = alloc::vec![(to, dest)];
+        let mut path = Vec::<_, N>::new();
+        let _ = path.push((to, dest));
         while i != self.root {
             dest = self.nil_replace(i).unwrap();
             to = i;
             i = dest.parent.root;
-            path.push((to, dest));
+            let _ = path.push((to, dest));
         }
 
-        Some(path.into_iter().rev())
+        todo!("find rev() alternative!!");
+
+        Some(path.into_iter())
+        //.rev())
     }
 
     fn nil_replace(&mut self, id: usize) -> Option<Branch<E, N>> {
