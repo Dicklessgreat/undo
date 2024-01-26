@@ -377,7 +377,7 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
         let mut outputs = Vec::new();
         for (id, branch) in path {
             // Move to the parent of the branch so we can apply the edits in the branch on top of it.
-            let mut outs = self.record.go_to(target, branch.parent.index);
+            let outs = self.record.go_to(target, branch.parent.index);
             for en in outs {
                 let _ = outputs.push(en);
             }
@@ -396,7 +396,7 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
             }
         }
 
-        let mut outs = self.record.go_to(target, at.index);
+        let outs = self.record.go_to(target, at.index);
         for en in outs {
             let _ = outputs.push(en);
         }

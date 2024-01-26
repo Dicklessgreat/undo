@@ -359,7 +359,6 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
             Record::undo
         };
 
-        let capacity = self.index.abs_diff(index);
         let mut outputs = Vec::<_, N>::new();
         while self.index != index {
             let output = undo_or_redo(self, target).unwrap();
@@ -399,7 +398,7 @@ impl<E: fmt::Display, const N: usize, S> Record<E, N, S> {
         self.entries.iter().nth(i).map(|e| {
             use core::fmt::Write;
             let mut result = String::<SIZE>::new();
-            result.write_fmt(format_args!("{}", e));
+            let _ = result.write_fmt(format_args!("{}", e));
             result
         })
     }
