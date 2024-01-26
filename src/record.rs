@@ -274,7 +274,7 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
                 } else {
                     self.index += 1;
                 }
-                self.entries.push_back(entry);
+                let _ = self.entries.push_back(entry);
                 false
             }
         };
@@ -363,7 +363,7 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
         let mut outputs = Vec::<_, N>::new();
         while self.index != index {
             let output = undo_or_redo(self, target).unwrap();
-            outputs.push(output);
+            let _ = outputs.push(output);
         }
 
         let can_undo = self.can_undo();
