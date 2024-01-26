@@ -169,7 +169,7 @@ impl<E, const N: usize, S> Record<E, N, S> {
     }
 
     /// Returns a structure for configurable formatting of the record.
-    pub fn display(&self) -> Display<E, N, S> {
+    pub fn display<const SIZE: usize>(&self) -> Display<E, N, SIZE, S> {
         Display::from(self)
     }
 

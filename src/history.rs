@@ -201,7 +201,7 @@ impl<E, const N: usize, S> History<E, N, S> {
     }
 
     /// Returns a structure for configurable formatting of the history.
-    pub fn display(&self) -> Display<E, N, S> {
+    pub fn display<const SIZE: usize>(&self) -> Display<E, N, SIZE, S> {
         Display::from(self)
     }
 

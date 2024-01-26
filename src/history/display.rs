@@ -4,14 +4,14 @@ use core::fmt::{self, Write};
 use std::time::SystemTime;
 
 /// Configurable display formatting for the [`History`].
-pub struct Display<'a, E, const N: usize, S> {
+pub struct Display<'a, E, const N: usize, const SIZE: usize, S> {
     history: &'a History<E, N, S>,
     format: Format,
     #[cfg(feature = "std")]
     st_fmt: &'a dyn Fn(SystemTime, SystemTime) -> String,
 }
 
-impl<'a, E, const N: usize, S> Display<'a, E, N, S> {
+impl<'a, E, const N: usize, const SIZE: usize, S> Display<'a, E, N, SIZE, S> {
     /// Show colored output (on by default).
     ///
     /// Requires the `colored` feature to be enabled.
@@ -53,7 +53,7 @@ impl<'a, E, const N: usize, S> Display<'a, E, N, S> {
     }
 }
 
-impl<E: fmt::Display, const N: usize, S> Display<'_, E, N, S> {
+impl<E: fmt::Display, const N: usize, const SIZE: usize, S> Display<'_, E, N, SIZE, S> {
     fn fmt_list(
         &self,
         f: &mut fmt::Formatter,
@@ -80,10 +80,10 @@ impl<E: fmt::Display, const N: usize, S> Display<'_, E, N, S> {
         if let Some(entry) = entry {
             if self.format.detailed {
                 writeln!(f)?;
-                self.format.message(f, entry, Some(level))?;
+                self.format.message::<SIZE>(f, entry, Some(level))?;
             } else {
                 f.write_char(' ')?;
-                self.format.message(f, entry, Some(level))?;
+                self.format.message::<SIZE>(f, entry, Some(level))?;
                 writeln!(f)?;
             }
         }
@@ -140,7 +140,9 @@ impl<E: fmt::Display, const N: usize, S> Display<'_, E, N, S> {
     }
 }
 
-impl<'a, E, const N: usize, S> From<&'a History<E, N, S>> for Display<'a, E, N, S> {
+impl<'a, E, const N: usize, const SIZE: usize, S> From<&'a History<E, N, S>>
+    for Display<'a, E, N, SIZE, S>
+{
     fn from(history: &'a History<E, N, S>) -> Self {
         Display {
             history,
@@ -151,7 +153,9 @@ impl<'a, E, const N: usize, S> From<&'a History<E, N, S>> for Display<'a, E, N, 
     }
 }
 
-impl<E: fmt::Display, const N: usize, S> fmt::Display for Display<'_, E, N, S> {
+impl<E: fmt::Display, const N: usize, const SIZE: usize, S> fmt::Display
+    for Display<'_, E, N, SIZE, S>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         #[cfg(feature = "std")]
         let now = SystemTime::now();

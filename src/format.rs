@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "colored"), allow(unused_variables))]
 
 use crate::At;
-use alloc::string::ToString;
+use core::fmt::Display;
+use heapless::String;
+
 #[cfg(feature = "colored")]
 use colored::{Color, Colorize};
 use core::fmt::{self, Write};
@@ -44,14 +46,15 @@ impl Format {
         f.write_str(text)
     }
 
-    pub fn message(
+    pub fn message<const SIZE: usize>(
         self,
         f: &mut fmt::Formatter,
-        msg: &impl ToString,
+        msg: &impl Display,
         level: Option<usize>,
     ) -> fmt::Result {
-        let msg = msg.to_string();
-        let lines = msg.lines();
+        let mut buffer = String::<SIZE>::new();
+        let _ = buffer.write_fmt(format_args!("{}", msg));
+        let lines = buffer.lines();
         if self.detailed {
             for line in lines {
                 if let Some(level) = level {
