@@ -12,10 +12,10 @@ pub use queue::Queue;
 
 use crate::socket::Slot;
 use crate::{At, Edit, Entry, Event, Record};
-use alloc::string::String;
 use core::fmt;
 use core::mem;
 use heapless::Deque;
+use heapless::String;
 use heapless::Vec;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -407,13 +407,13 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
 impl<E: fmt::Display, const N: usize, S> History<E, N, S> {
     /// Returns the string of the edit which will be undone
     /// in the next call to [`History::undo`].
-    pub fn undo_string(&self) -> Option<String> {
+    pub fn undo_string<const SIZE: usize>(&self) -> Option<String<SIZE>> {
         self.record.undo_string()
     }
 
     /// Returns the string of the edit which will be redone
     /// in the next call to [`History::redo`].
-    pub fn redo_string(&self) -> Option<String> {
+    pub fn redo_string<const SIZE: usize>(&self) -> Option<String<SIZE>> {
         self.record.redo_string()
     }
 }

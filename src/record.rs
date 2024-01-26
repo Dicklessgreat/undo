@@ -12,11 +12,12 @@ pub use queue::Queue;
 
 use crate::socket::{Slot, Socket};
 use crate::{Edit, Entry, Event, Merged};
-use alloc::string::{String, ToString};
 use core::fmt;
 use core::num::NonZeroUsize;
 use heapless::Deque;
+use heapless::String;
 use heapless::Vec;
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -384,18 +385,23 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
 impl<E: fmt::Display, const N: usize, S> Record<E, N, S> {
     /// Returns the string of the edit which will be undone
     /// in the next call to [`Record::undo`].
-    pub fn undo_string(&self) -> Option<String> {
+    pub fn undo_string<const SIZE: usize>(&self) -> Option<String<SIZE>> {
         self.index.checked_sub(1).and_then(|i| self.string_at(i))
     }
 
     /// Returns the string of the edit which will be redone
     /// in the next call to [`Record::redo`].
-    pub fn redo_string(&self) -> Option<String> {
+    pub fn redo_string<const SIZE: usize>(&self) -> Option<String<SIZE>> {
         self.string_at(self.index)
     }
 
-    fn string_at(&self, i: usize) -> Option<String> {
-        self.entries.get(i).map(|e| e.to_string())
+    fn string_at<const SIZE: usize>(&self, i: usize) -> Option<String<SIZE>> {
+        self.entries.iter().nth(i).map(|e| {
+            use core::fmt::Write;
+            let mut result = String::<SIZE>::new();
+            result.write_fmt(format_args!("{}", e));
+            result
+        })
     }
 }
 
