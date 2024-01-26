@@ -36,9 +36,9 @@ impl<E, const N: usize, const M: usize, S> Queue<'_, E, N, M, S> {
     ///
     /// # Panics
     /// Panics if the new capacity exceeds `isize::MAX` bytes.
-    pub fn reserve(&mut self, additional: usize) {
-        self.entries.reserve(additional);
-    }
+    // pub fn reserve(&mut self, additional: usize) {
+    //     self.entries.reserve(additional);
+    // }
 
     /// Queues a [`Record::edit`] call.
     pub fn edit(&mut self, edit: E) {

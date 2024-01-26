@@ -79,9 +79,9 @@ impl<E, const N: usize, S> History<E, N, S> {
     ///
     /// # Panics
     /// Panics if the new capacity exceeds `isize::MAX` bytes.
-    pub fn reserve(&mut self, additional: usize) {
-        self.record.reserve(additional);
-    }
+    // pub fn reserve(&mut self, additional: usize) {
+    //     self.record.reserve(additional);
+    // }
 
     /// Returns the capacity of the history.
     pub fn capacity(&self) -> usize {
@@ -89,9 +89,9 @@ impl<E, const N: usize, S> History<E, N, S> {
     }
 
     /// Shrinks the capacity of the history as much as possible.
-    pub fn shrink_to_fit(&mut self) {
-        self.record.shrink_to_fit();
-    }
+    // pub fn shrink_to_fit(&mut self) {
+    //     self.record.shrink_to_fit();
+    // }
 
     /// Returns the number of edits in the current branch of the history.
     pub fn len(&self) -> usize {
@@ -356,7 +356,7 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
     }
 
     /// Revert the changes done to the target since the saved state.
-    pub fn revert<const M: usize>(&mut self, target: &mut E::Target) -> Vec<E::Output, M> {
+    pub fn revert(&mut self, target: &mut E::Target) -> Vec<E::Output, N> {
         let Some(saved) = self.saved() else {
             return Vec::new();
         };
@@ -364,7 +364,7 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
     }
 
     /// Repeatedly calls [`Edit::undo`] or [`Edit::redo`] until the edit at `at` is reached.
-    pub fn go_to<const M: usize>(&mut self, target: &mut E::Target, at: At) -> Vec<E::Output, M> {
+    pub fn go_to(&mut self, target: &mut E::Target, at: At) -> Vec<E::Output, N> {
         if self.root == at.root {
             return self.record.go_to(target, at.index);
         }
@@ -378,7 +378,9 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
         for (id, branch) in path {
             // Move to the parent of the branch so we can apply the edits in the branch on top of it.
             let mut outs = self.record.go_to(target, branch.parent.index);
-            outputs.append(&mut outs);
+            for en in outs {
+                let _ = outputs.push(en);
+            }
             // Apply the edits in the branch and move older edits into their own branch.
             for entry in branch.entries {
                 let index = self.record.head();
@@ -395,7 +397,9 @@ impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
         }
 
         let mut outs = self.record.go_to(target, at.index);
-        outputs.append(&mut outs);
+        for en in outs {
+            let _ = outputs.push(en);
+        }
         outputs
     }
 }
@@ -470,7 +474,7 @@ impl<E, const N: usize> Branch<E, N> {
 
     /// Returns the edit at the index.
     pub fn get_entry(&self, index: usize) -> Option<&Entry<E>> {
-        self.entries.get(index)
+        self.entries.iter().nth(index)
     }
 
     /// Returns an iterator over the edits in the branch.

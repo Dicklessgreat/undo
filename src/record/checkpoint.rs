@@ -24,9 +24,9 @@ impl<E, const N: usize, const M: usize, S> Checkpoint<'_, E, N, M, S> {
     ///
     /// # Panics
     /// Panics if the new capacity exceeds `isize::MAX` bytes.
-    pub fn reserve(&mut self, additional: usize) {
-        self.entries.reserve(additional);
-    }
+    // pub fn reserve(&mut self, additional: usize) {
+    //     self.entries.reserve(additional);
+    // }
 
     /// Commits the changes and consumes the checkpoint.
     pub fn commit(self) {}
@@ -56,14 +56,17 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
 
     /// Cancels the changes and consumes the checkpoint.
     pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output, M> {
+        todo!("find rev() alternative!!");
         self.entries
             .into_iter()
-            .rev()
+            // .rev()
             .filter_map(|entry| match entry {
                 CheckpointEntry::Edit { saved, mut tail } => {
                     let output = self.record.undo(target)?;
                     self.record.entries.pop_back();
-                    self.record.entries.append(&mut tail);
+                    for en in tail {
+                        let _ = self.record.entries.push_back(en);
+                    }
                     self.record.saved = self.record.saved.or(saved);
                     Some(output)
                 }

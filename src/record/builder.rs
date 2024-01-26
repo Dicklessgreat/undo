@@ -60,7 +60,7 @@ impl<E, const N: usize, S> Builder<E, N, S> {
             index: 0,
             saved: self.saved.then_some(0),
             socket: self.socket,
-            entries: Deque::with_capacity(N),
+            entries: Deque::<_, N>::new(),
         }
     }
 }

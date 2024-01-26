@@ -83,9 +83,9 @@ impl<E, const N: usize, S> Record<E, N, S> {
     ///
     /// # Panics
     /// Panics if the new capacity exceeds `isize::MAX` bytes.
-    pub fn reserve(&mut self, additional: usize) {
-        self.entries.reserve(additional);
-    }
+    // pub fn reserve(&mut self, additional: usize) {
+    //     self.entries.reserve(additional);
+    // }
 
     /// Returns the capacity of the record.
     pub fn capacity(&self) -> usize {
@@ -93,9 +93,9 @@ impl<E, const N: usize, S> Record<E, N, S> {
     }
 
     /// Shrinks the capacity of the record as much as possible.
-    pub fn shrink_to_fit(&mut self) {
-        self.entries.shrink_to_fit();
-    }
+    // pub fn shrink_to_fit(&mut self) {
+    //     self.entries.shrink_to_fit();
+    // }
 
     /// Returns the number of edits in the record.
     pub fn len(&self) -> usize {
@@ -149,7 +149,7 @@ impl<E, const N: usize, S> Record<E, N, S> {
 
     /// Returns the entry at the index.
     pub fn get_entry(&self, index: usize) -> Option<&Entry<E>> {
-        self.entries.get(index)
+        self.entries.iter().nth(index)
     }
 
     /// Returns an iterator over the entries.
@@ -173,7 +173,7 @@ impl<E, const N: usize, S> Record<E, N, S> {
     }
 
     /// Remove all elements after the index.
-    pub(crate) fn rm_tail<const M: usize>(&mut self) -> (Deque<Entry<E>, M>, Option<usize>) {
+    pub(crate) fn rm_tail(&mut self) -> (Deque<Entry<E>, N>, Option<usize>) {
         // Remove the saved state if it will be split off.
         let rm_saved = if self.saved > Some(self.index) {
             self.saved.take()
@@ -181,7 +181,10 @@ impl<E, const N: usize, S> Record<E, N, S> {
             None
         };
 
-        let tail = self.entries.split_off(self.index);
+        let mut tail = Deque::new();
+        while self.entries.len() < self.index {
+            let _ = tail.push_back(self.entries.pop_back().expect("in the range"));
+        }
         (tail, rm_saved)
     }
 }
@@ -222,30 +225,27 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
         output
     }
 
-    pub(crate) fn edit_and_push<const M: usize>(
+    pub(crate) fn edit_and_push(
         &mut self,
         target: &mut E::Target,
         mut entry: Entry<E>,
-    ) -> (E::Output, bool, Deque<Entry<E>, M>, Option<usize>) {
+    ) -> (E::Output, bool, Deque<Entry<E>, N>, Option<usize>) {
         let output = entry.edit(target);
         let (merged_or_annulled, tail, rm_saved) = self.push(entry);
         (output, merged_or_annulled, tail, rm_saved)
     }
 
-    pub(crate) fn redo_and_push<const M: usize>(
+    pub(crate) fn redo_and_push(
         &mut self,
         target: &mut E::Target,
         mut entry: Entry<E>,
-    ) -> (E::Output, bool, Deque<Entry<E>, M>, Option<usize>) {
+    ) -> (E::Output, bool, Deque<Entry<E>, N>, Option<usize>) {
         let output = entry.redo(target);
         let (merged_or_annulled, tail, rm_saved) = self.push(entry);
         (output, merged_or_annulled, tail, rm_saved)
     }
 
-    fn push<const M: usize>(
-        &mut self,
-        entry: Entry<E>,
-    ) -> (bool, Deque<Entry<E>, M>, Option<usize>) {
+    fn push(&mut self, entry: Entry<E>) -> (bool, Deque<Entry<E>, N>, Option<usize>) {
         let old_index = self.index;
         let could_undo = self.can_undo();
         let could_redo = self.can_redo();
@@ -292,7 +292,12 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
         self.can_undo().then(|| {
             let old_index = self.index;
             let was_saved = self.is_saved();
-            let output = self.entries[self.index - 1].undo(target);
+            let output = self
+                .entries
+                .iter_mut()
+                .nth(self.index - 1)
+                .expect("in the range")
+                .undo(target);
             self.index -= 1;
             let is_saved = self.is_saved();
             self.socket.emit_if(old_index == 1, || Event::Undo(false));
@@ -311,7 +316,12 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
         self.can_redo().then(|| {
             let old_index = self.index;
             let was_saved = self.is_saved();
-            let output = self.entries[self.index].redo(target);
+            let output = self
+                .entries
+                .iter_mut()
+                .nth(self.index)
+                .expect("in the range")
+                .redo(target);
             self.index += 1;
             let is_saved = self.is_saved();
             self.socket.emit_if(old_index == 0, || Event::Undo(true));
@@ -331,11 +341,7 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
     }
 
     /// Repeatedly calls [`Edit::undo`] or [`Edit::redo`] until the edit at `index` is reached.
-    pub fn go_to<const M: usize>(
-        &mut self,
-        target: &mut E::Target,
-        index: usize,
-    ) -> Vec<E::Output, M> {
+    pub fn go_to(&mut self, target: &mut E::Target, index: usize) -> Vec<E::Output, N> {
         if self.index == index || index > self.len() {
             return Vec::new();
         }
@@ -353,7 +359,7 @@ impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
         };
 
         let capacity = self.index.abs_diff(index);
-        let mut outputs = Vec::with_capacity(capacity);
+        let mut outputs = Vec::<_, N>::new();
         while self.index != index {
             let output = undo_or_redo(self, target).unwrap();
             outputs.push(output);
