@@ -36,21 +36,31 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
     /// Calls the `apply` method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
         let (output, _, tail, saved) = self.record.edit_and_push(target, Entry::new(edit));
-        self.entries.push(CheckpointEntry::Edit { saved, tail });
+        if self
+            .entries
+            .push(CheckpointEntry::Edit { saved, tail })
+            .is_err()
+        {
+            panic!("Entry limit exceeded!!")
+        }
         output
     }
 
     /// Calls the `undo` method.
     pub fn undo(&mut self, target: &mut E::Target) -> Option<E::Output> {
         let output = self.record.undo(target)?;
-        self.entries.push(CheckpointEntry::Undo);
+        if self.entries.push(CheckpointEntry::Undo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
         Some(output)
     }
 
     /// Calls the `redo` method.
     pub fn redo(&mut self, target: &mut E::Target) -> Option<E::Output> {
         let output = self.record.redo(target)?;
-        self.entries.push(CheckpointEntry::Redo);
+        if self.entries.push(CheckpointEntry::Redo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
         Some(output)
     }
 

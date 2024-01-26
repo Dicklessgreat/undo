@@ -31,19 +31,29 @@ impl<E, const N: usize, const M: usize, S> Checkpoint<'_, E, N, M, S> {
 impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S> {
     /// Calls the [`History::edit`] method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
-        self.entries.push(CheckpointEntry::Edit(self.history.root));
+        if self
+            .entries
+            .push(CheckpointEntry::Edit(self.history.root))
+            .is_err()
+        {
+            panic!("Entry limit exceeded!!")
+        }
         self.history.edit(target, edit)
     }
 
     /// Calls the [`History::undo`] method.
     pub fn undo(&mut self, target: &mut E::Target) -> Option<E::Output> {
-        self.entries.push(CheckpointEntry::Undo);
+        if self.entries.push(CheckpointEntry::Undo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
         self.history.undo(target)
     }
 
     /// Calls the [`History::redo`] method.
     pub fn redo(&mut self, target: &mut E::Target) -> Option<E::Output> {
-        self.entries.push(CheckpointEntry::Redo);
+        if self.entries.push(CheckpointEntry::Redo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
         self.history.redo(target)
     }
 

@@ -42,17 +42,23 @@ impl<E, const N: usize, const M: usize, S> Queue<'_, E, N, M, S> {
 
     /// Queues a [`History::edit`] call.
     pub fn edit(&mut self, edit: E) {
-        self.entries.push(QueueEntry::Edit(edit));
+        if self.entries.push(QueueEntry::Edit(edit)).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
     }
 
     /// Queues a [`History::undo`] call.
     pub fn undo(&mut self) {
-        self.entries.push(QueueEntry::Undo);
+        if self.entries.push(QueueEntry::Undo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
     }
 
     /// Queues a [`History::redo`] call.
     pub fn redo(&mut self) {
-        self.entries.push(QueueEntry::Redo);
+        if self.entries.push(QueueEntry::Redo).is_err() {
+            panic!("Entry limit exceeded!!")
+        }
     }
 
     /// Cancels the queued edits.
