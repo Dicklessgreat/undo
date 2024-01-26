@@ -12,11 +12,11 @@ pub use queue::Queue;
 
 use crate::socket::Slot;
 use crate::{At, Edit, Entry, Event, Record};
-use alloc::collections::VecDeque;
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::fmt;
 use core::mem;
+use heapless::Deque;
+use heapless::Vec;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use slab::Slab;
@@ -55,23 +55,23 @@ use slab::Slab;
 /// ```
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug)]
-pub struct History<E, S = ()> {
+pub struct History<E, const N: usize, S = ()> {
     root: usize,
     saved: Option<At>,
-    record: Record<E, S>,
-    branches: Slab<Branch<E>>,
+    record: Record<E, N, S>,
+    branches: Slab<Branch<E, N>>,
 }
 
-impl<E> History<E> {
+impl<E, const N: usize> History<E, N> {
     /// Returns a new history.
-    pub fn new() -> History<E> {
+    pub fn new() -> History<E, N> {
         History::builder().build()
     }
 }
 
-impl<E, S> History<E, S> {
+impl<E, const N: usize, S> History<E, N, S> {
     /// Returns a new history builder.
-    pub fn builder() -> Builder<E, S> {
+    pub fn builder() -> Builder<E, N, S> {
         Builder::default()
     }
 
@@ -181,33 +181,33 @@ impl<E, S> History<E, S> {
     }
 
     /// Returns the branch with the given id.
-    pub fn get_branch(&self, id: usize) -> Option<&Branch<E>> {
+    pub fn get_branch(&self, id: usize) -> Option<&Branch<E, N>> {
         self.branches.get(id)
     }
 
     /// Returns an iterator over the branches in the history.
-    pub fn branches(&self) -> impl Iterator<Item = (usize, &Branch<E>)> {
+    pub fn branches(&self) -> impl Iterator<Item = (usize, &Branch<E, N>)> {
         self.branches.iter()
     }
 
     /// Returns a queue.
-    pub fn queue(&mut self) -> Queue<E, S> {
+    pub fn queue<const M: usize>(&mut self) -> Queue<E, N, M, S> {
         Queue::from(self)
     }
 
     /// Returns a checkpoint.
-    pub fn checkpoint(&mut self) -> Checkpoint<E, S> {
+    pub fn checkpoint<const M: usize>(&mut self) -> Checkpoint<E, N, M, S> {
         Checkpoint::from(self)
     }
 
     /// Returns a structure for configurable formatting of the history.
-    pub fn display(&self) -> Display<E, S> {
+    pub fn display(&self) -> Display<E, N, S> {
         Display::from(self)
     }
 
     fn rm_child_of(&mut self, at: At) {
         // We need to check if any of the branches had the removed node as root.
-        let mut dead: Vec<_> = self
+        let mut dead: Vec<_, N> = self
             .branches()
             .filter(|&(_, child)| child.parent == at)
             .map(|(id, _)| id)
@@ -225,7 +225,7 @@ impl<E, S> History<E, S> {
         }
     }
 
-    fn mk_path(&mut self, mut to: usize) -> Option<impl Iterator<Item = (usize, Branch<E>)>> {
+    fn mk_path(&mut self, mut to: usize) -> Option<impl Iterator<Item = (usize, Branch<E, N>)>> {
         debug_assert_ne!(self.root, to);
         let mut dest = self.nil_replace(to)?;
 
@@ -241,14 +241,14 @@ impl<E, S> History<E, S> {
         Some(path.into_iter().rev())
     }
 
-    fn nil_replace(&mut self, id: usize) -> Option<Branch<E>> {
+    fn nil_replace(&mut self, id: usize) -> Option<Branch<E, N>> {
         let dest = self.branches.get_mut(id)?;
         let dest = mem::replace(dest, Branch::NIL);
         Some(dest)
     }
 }
 
-impl<E, S: Slot> History<E, S> {
+impl<E, const N: usize, S: Slot> History<E, N, S> {
     /// Marks the target as currently being in a saved or unsaved state.
     pub fn set_saved(&mut self) {
         self.saved = None;
@@ -312,7 +312,7 @@ impl<E, S: Slot> History<E, S> {
     }
 }
 
-impl<E: Edit, S: Slot> History<E, S> {
+impl<E: Edit, const N: usize, S: Slot> History<E, N, S> {
     /// Pushes the [`Edit`] to the top of the history and executes its [`Edit::edit`] method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
         let head = self.head();
@@ -356,7 +356,7 @@ impl<E: Edit, S: Slot> History<E, S> {
     }
 
     /// Revert the changes done to the target since the saved state.
-    pub fn revert(&mut self, target: &mut E::Target) -> Vec<E::Output> {
+    pub fn revert<const M: usize>(&mut self, target: &mut E::Target) -> Vec<E::Output, M> {
         let Some(saved) = self.saved() else {
             return Vec::new();
         };
@@ -364,7 +364,7 @@ impl<E: Edit, S: Slot> History<E, S> {
     }
 
     /// Repeatedly calls [`Edit::undo`] or [`Edit::redo`] until the edit at `at` is reached.
-    pub fn go_to(&mut self, target: &mut E::Target, at: At) -> Vec<E::Output> {
+    pub fn go_to<const M: usize>(&mut self, target: &mut E::Target, at: At) -> Vec<E::Output, M> {
         if self.root == at.root {
             return self.record.go_to(target, at.index);
         }
@@ -400,7 +400,7 @@ impl<E: Edit, S: Slot> History<E, S> {
     }
 }
 
-impl<E: fmt::Display, S> History<E, S> {
+impl<E: fmt::Display, const N: usize, S> History<E, N, S> {
     /// Returns the string of the edit which will be undone
     /// in the next call to [`History::undo`].
     pub fn undo_string(&self) -> Option<String> {
@@ -414,14 +414,14 @@ impl<E: fmt::Display, S> History<E, S> {
     }
 }
 
-impl<E> Default for History<E> {
-    fn default() -> History<E> {
+impl<E, const N: usize> Default for History<E, N> {
+    fn default() -> History<E, N> {
         History::new()
     }
 }
 
-impl<E, S> From<Record<E, S>> for History<E, S> {
-    fn from(record: Record<E, S>) -> Self {
+impl<E, const N: usize, S> From<Record<E, N, S>> for History<E, N, S> {
+    fn from(record: Record<E, N, S>) -> Self {
         let mut branches = Slab::new();
         let root = branches.insert(Branch::NIL);
         History {
@@ -433,8 +433,8 @@ impl<E, S> From<Record<E, S>> for History<E, S> {
     }
 }
 
-impl<E, F> From<History<E, F>> for Record<E, F> {
-    fn from(history: History<E, F>) -> Record<E, F> {
+impl<E, const N: usize, F> From<History<E, N, F>> for Record<E, N, F> {
+    fn from(history: History<E, N, F>) -> Record<E, N, F> {
         history.record
     }
 }
@@ -442,15 +442,15 @@ impl<E, F> From<History<E, F>> for Record<E, F> {
 /// A branch in the history.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug)]
-pub struct Branch<E> {
+pub struct Branch<E, const N: usize> {
     parent: At,
-    entries: VecDeque<Entry<E>>,
+    entries: Deque<Entry<E>, N>,
 }
 
-impl<E> Branch<E> {
-    const NIL: Branch<E> = Branch {
+impl<E, const N: usize> Branch<E, N> {
+    const NIL: Branch<E, N> = Branch {
         parent: At::NIL,
-        entries: VecDeque::new(),
+        entries: Deque::new(),
     };
 
     /// Returns the parent edit of the branch.

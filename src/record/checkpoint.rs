@@ -1,12 +1,12 @@
 use crate::{Edit, Entry, Record, Slot};
-use alloc::collections::VecDeque;
-use alloc::vec::Vec;
+use heapless::Deque;
+use heapless::Vec;
 
 #[derive(Debug)]
-enum CheckpointEntry<E> {
+enum CheckpointEntry<E, const N: usize> {
     Edit {
         saved: Option<usize>,
-        tail: VecDeque<Entry<E>>,
+        tail: Deque<Entry<E>, N>,
     },
     Undo,
     Redo,
@@ -14,12 +14,12 @@ enum CheckpointEntry<E> {
 
 /// Wraps a [`Record`] and gives it checkpoint functionality.
 #[derive(Debug)]
-pub struct Checkpoint<'a, E, S> {
-    record: &'a mut Record<E, S>,
-    entries: Vec<CheckpointEntry<E>>,
+pub struct Checkpoint<'a, E, const N: usize, const M: usize, S> {
+    record: &'a mut Record<E, N, S>,
+    entries: Vec<CheckpointEntry<E, N>, M>,
 }
 
-impl<E, S> Checkpoint<'_, E, S> {
+impl<E, const N: usize, const M: usize, S> Checkpoint<'_, E, N, M, S> {
     /// Reserves capacity for at least `additional` more entries in the checkpoint.
     ///
     /// # Panics
@@ -32,7 +32,7 @@ impl<E, S> Checkpoint<'_, E, S> {
     pub fn commit(self) {}
 }
 
-impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
+impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S> {
     /// Calls the `apply` method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
         let (output, _, tail, saved) = self.record.edit_and_push(target, Entry::new(edit));
@@ -55,7 +55,7 @@ impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
     }
 
     /// Cancels the changes and consumes the checkpoint.
-    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output> {
+    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output, M> {
         self.entries
             .into_iter()
             .rev()
@@ -74,8 +74,10 @@ impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
     }
 }
 
-impl<'a, E, S> From<&'a mut Record<E, S>> for Checkpoint<'a, E, S> {
-    fn from(record: &'a mut Record<E, S>) -> Self {
+impl<'a, E, const N: usize, const M: usize, S> From<&'a mut Record<E, N, S>>
+    for Checkpoint<'a, E, N, M, S>
+{
+    fn from(record: &'a mut Record<E, N, S>) -> Self {
         Checkpoint {
             record,
             entries: Vec::new(),

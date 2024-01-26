@@ -12,11 +12,11 @@ pub use queue::Queue;
 
 use crate::socket::{Slot, Socket};
 use crate::{Edit, Entry, Event, Merged};
-use alloc::collections::VecDeque;
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 use core::num::NonZeroUsize;
+use heapless::Deque;
+use heapless::Vec;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -58,24 +58,24 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug)]
-pub struct Record<E, S = ()> {
+pub struct Record<E, const N: usize, S = ()> {
     limit: NonZeroUsize,
     index: usize,
     pub(crate) saved: Option<usize>,
     pub(crate) socket: Socket<S>,
-    pub(crate) entries: VecDeque<Entry<E>>,
+    pub(crate) entries: Deque<Entry<E>, N>,
 }
 
-impl<E> Record<E> {
+impl<E, const N: usize> Record<E, N> {
     /// Returns a new record.
-    pub fn new() -> Record<E> {
+    pub fn new() -> Record<E, N> {
         Record::builder().build()
     }
 }
 
-impl<E, S> Record<E, S> {
+impl<E, const N: usize, S> Record<E, N, S> {
     /// Returns a new record builder.
-    pub fn builder() -> Builder<E, S> {
+    pub fn builder() -> Builder<E, N, S> {
         Builder::default()
     }
 
@@ -158,22 +158,22 @@ impl<E, S> Record<E, S> {
     }
 
     /// Returns a queue.
-    pub fn queue(&mut self) -> Queue<E, S> {
+    pub fn queue<const M: usize>(&mut self) -> Queue<E, N, M, S> {
         Queue::from(self)
     }
 
     /// Returns a checkpoint.
-    pub fn checkpoint(&mut self) -> Checkpoint<E, S> {
+    pub fn checkpoint<const M: usize>(&mut self) -> Checkpoint<E, N, M, S> {
         Checkpoint::from(self)
     }
 
     /// Returns a structure for configurable formatting of the record.
-    pub fn display(&self) -> Display<E, S> {
+    pub fn display(&self) -> Display<E, N, S> {
         Display::from(self)
     }
 
     /// Remove all elements after the index.
-    pub(crate) fn rm_tail(&mut self) -> (VecDeque<Entry<E>>, Option<usize>) {
+    pub(crate) fn rm_tail<const M: usize>(&mut self) -> (Deque<Entry<E>, M>, Option<usize>) {
         // Remove the saved state if it will be split off.
         let rm_saved = if self.saved > Some(self.index) {
             self.saved.take()
@@ -186,7 +186,7 @@ impl<E, S> Record<E, S> {
     }
 }
 
-impl<E, S: Slot> Record<E, S> {
+impl<E, const N: usize, S: Slot> Record<E, N, S> {
     /// Marks the target as currently being in a saved.
     pub fn set_saved(&mut self) {
         let was_saved = self.is_saved();
@@ -215,34 +215,37 @@ impl<E, S: Slot> Record<E, S> {
     }
 }
 
-impl<E: Edit, S: Slot> Record<E, S> {
+impl<E: Edit, const N: usize, S: Slot> Record<E, N, S> {
     /// Pushes the edit on top of the record and executes its [`Edit::edit`] method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
         let (output, _, _, _) = self.edit_and_push(target, Entry::new(edit));
         output
     }
 
-    pub(crate) fn edit_and_push(
+    pub(crate) fn edit_and_push<const M: usize>(
         &mut self,
         target: &mut E::Target,
         mut entry: Entry<E>,
-    ) -> (E::Output, bool, VecDeque<Entry<E>>, Option<usize>) {
+    ) -> (E::Output, bool, Deque<Entry<E>, M>, Option<usize>) {
         let output = entry.edit(target);
         let (merged_or_annulled, tail, rm_saved) = self.push(entry);
         (output, merged_or_annulled, tail, rm_saved)
     }
 
-    pub(crate) fn redo_and_push(
+    pub(crate) fn redo_and_push<const M: usize>(
         &mut self,
         target: &mut E::Target,
         mut entry: Entry<E>,
-    ) -> (E::Output, bool, VecDeque<Entry<E>>, Option<usize>) {
+    ) -> (E::Output, bool, Deque<Entry<E>, M>, Option<usize>) {
         let output = entry.redo(target);
         let (merged_or_annulled, tail, rm_saved) = self.push(entry);
         (output, merged_or_annulled, tail, rm_saved)
     }
 
-    fn push(&mut self, entry: Entry<E>) -> (bool, VecDeque<Entry<E>>, Option<usize>) {
+    fn push<const M: usize>(
+        &mut self,
+        entry: Entry<E>,
+    ) -> (bool, Deque<Entry<E>, M>, Option<usize>) {
         let old_index = self.index;
         let could_undo = self.can_undo();
         let could_redo = self.can_redo();
@@ -322,13 +325,17 @@ impl<E: Edit, S: Slot> Record<E, S> {
     }
 
     /// Revert the changes done to the target since the saved state.
-    pub fn revert(&mut self, target: &mut E::Target) -> Vec<E::Output> {
+    pub fn revert(&mut self, target: &mut E::Target) -> Vec<E::Output, N> {
         self.saved
             .map_or_else(Vec::new, |saved| self.go_to(target, saved))
     }
 
     /// Repeatedly calls [`Edit::undo`] or [`Edit::redo`] until the edit at `index` is reached.
-    pub fn go_to(&mut self, target: &mut E::Target, index: usize) -> Vec<E::Output> {
+    pub fn go_to<const M: usize>(
+        &mut self,
+        target: &mut E::Target,
+        index: usize,
+    ) -> Vec<E::Output, M> {
         if self.index == index || index > self.len() {
             return Vec::new();
         }
@@ -368,7 +375,7 @@ impl<E: Edit, S: Slot> Record<E, S> {
     }
 }
 
-impl<E: fmt::Display, S> Record<E, S> {
+impl<E: fmt::Display, const N: usize, S> Record<E, N, S> {
     /// Returns the string of the edit which will be undone
     /// in the next call to [`Record::undo`].
     pub fn undo_string(&self) -> Option<String> {
@@ -386,8 +393,8 @@ impl<E: fmt::Display, S> Record<E, S> {
     }
 }
 
-impl<E> Default for Record<E> {
-    fn default() -> Record<E> {
+impl<E, const N: usize> Default for Record<E, N> {
+    fn default() -> Record<E, N> {
         Record::new()
     }
 }

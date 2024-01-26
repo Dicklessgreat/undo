@@ -1,5 +1,5 @@
 use crate::{At, Edit, History, Slot};
-use alloc::vec::Vec;
+use heapless::Vec;
 
 #[derive(Debug)]
 enum CheckpointEntry {
@@ -10,12 +10,12 @@ enum CheckpointEntry {
 
 /// Wraps a [`History`] and gives it checkpoint functionality.
 #[derive(Debug)]
-pub struct Checkpoint<'a, E, S> {
-    history: &'a mut History<E, S>,
-    entries: Vec<CheckpointEntry>,
+pub struct Checkpoint<'a, E, const N: usize, const M: usize, S> {
+    history: &'a mut History<E, N, S>,
+    entries: Vec<CheckpointEntry, M>,
 }
 
-impl<E, S> Checkpoint<'_, E, S> {
+impl<E, const N: usize, const M: usize, S> Checkpoint<'_, E, N, M, S> {
     /// Reserves capacity for at least `additional` more entries in the checkpoint.
     ///
     /// # Panics
@@ -28,7 +28,7 @@ impl<E, S> Checkpoint<'_, E, S> {
     pub fn commit(self) {}
 }
 
-impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
+impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S> {
     /// Calls the [`History::edit`] method.
     pub fn edit(&mut self, target: &mut E::Target, edit: E) -> E::Output {
         self.entries.push(CheckpointEntry::Edit(self.history.root));
@@ -48,7 +48,7 @@ impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
     }
 
     /// Cancels the changes and consumes the checkpoint.
-    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output> {
+    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output, M> {
         self.entries
             .into_iter()
             .rev()
@@ -77,8 +77,10 @@ impl<E: Edit, S: Slot> Checkpoint<'_, E, S> {
     }
 }
 
-impl<'a, E, S> From<&'a mut History<E, S>> for Checkpoint<'a, E, S> {
-    fn from(history: &'a mut History<E, S>) -> Self {
+impl<'a, E, const N: usize, const M: usize, S> From<&'a mut History<E, N, S>>
+    for Checkpoint<'a, E, N, M, S>
+{
+    fn from(history: &'a mut History<E, N, S>) -> Self {
         Checkpoint {
             history,
             entries: Vec::new(),

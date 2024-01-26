@@ -1,5 +1,5 @@
 use crate::{Edit, History, Slot};
-use alloc::vec::Vec;
+use heapless::Vec;
 
 #[derive(Debug)]
 enum QueueEntry<E> {
@@ -26,12 +26,12 @@ enum QueueEntry<E> {
 /// assert_eq!(string, "abc");
 /// ```
 #[derive(Debug)]
-pub struct Queue<'a, E, S> {
-    history: &'a mut History<E, S>,
-    entries: Vec<QueueEntry<E>>,
+pub struct Queue<'a, E, const N: usize, const M: usize, S> {
+    history: &'a mut History<E, N, S>,
+    entries: Vec<QueueEntry<E>, M>,
 }
 
-impl<E, S> Queue<'_, E, S> {
+impl<E, const N: usize, const M: usize, S> Queue<'_, E, N, M, S> {
     /// Reserves capacity for at least `additional` more entries in the queue.
     ///
     /// # Panics
@@ -59,9 +59,9 @@ impl<E, S> Queue<'_, E, S> {
     pub fn cancel(self) {}
 }
 
-impl<E: Edit, S: Slot> Queue<'_, E, S> {
+impl<E: Edit, const N: usize, const M: usize, S: Slot> Queue<'_, E, N, M, S> {
     /// Applies the queued edits.
-    pub fn commit(self, target: &mut E::Target) -> Vec<E::Output> {
+    pub fn commit(self, target: &mut E::Target) -> Vec<E::Output, M> {
         self.entries
             .into_iter()
             .filter_map(|entry| match entry {
@@ -73,8 +73,10 @@ impl<E: Edit, S: Slot> Queue<'_, E, S> {
     }
 }
 
-impl<'a, E, S> From<&'a mut History<E, S>> for Queue<'a, E, S> {
-    fn from(history: &'a mut History<E, S>) -> Self {
+impl<'a, E, const N: usize, const M: usize, S> From<&'a mut History<E, N, S>>
+    for Queue<'a, E, N, M, S>
+{
+    fn from(history: &'a mut History<E, N, S>) -> Self {
         Queue {
             history,
             entries: Vec::new(),
