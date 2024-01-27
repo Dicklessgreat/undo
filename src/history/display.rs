@@ -1,5 +1,6 @@
 use crate::{At, Entry, Format, History};
 use core::fmt::{self, Write};
+use heapless::String;
 #[cfg(feature = "std")]
 use std::time::SystemTime;
 
@@ -8,7 +9,7 @@ pub struct Display<'a, E, const N: usize, const SIZE: usize, S> {
     history: &'a History<E, N, S>,
     format: Format,
     #[cfg(feature = "std")]
-    st_fmt: &'a dyn Fn(SystemTime, SystemTime) -> String,
+    st_fmt: &'a dyn Fn(SystemTime, SystemTime) -> String<SIZE>,
 }
 
 impl<'a, E, const N: usize, const SIZE: usize, S> Display<'a, E, N, SIZE, S> {
@@ -46,7 +47,7 @@ impl<'a, E, const N: usize, const SIZE: usize, S> Display<'a, E, N, SIZE, S> {
     #[cfg(feature = "std")]
     pub fn set_st_fmt(
         &mut self,
-        st_fmt: &'a dyn Fn(SystemTime, SystemTime) -> String,
+        st_fmt: &'a dyn Fn(SystemTime, SystemTime) -> String<SIZE>,
     ) -> &mut Self {
         self.st_fmt = st_fmt;
         self

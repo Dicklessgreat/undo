@@ -11,9 +11,13 @@ use core::fmt::{self, Write};
 use std::time::SystemTime;
 
 #[cfg(feature = "std")]
-pub(crate) fn default_st_fmt(now: SystemTime, at: SystemTime) -> String {
+pub(crate) fn default_st_fmt<const SIZE: usize>(now: SystemTime, at: SystemTime) -> String<SIZE> {
+    let mut result = String::new();
     let elapsed = now.duration_since(at).unwrap_or_else(|e| e.duration());
-    format!("{elapsed:.1?}")
+    result
+        .write_fmt(format_args!("{elapsed:.1?}"))
+        .expect("has enough buffer");
+    result
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -144,7 +148,11 @@ impl Format {
     }
 
     #[cfg(feature = "std")]
-    pub fn elapsed(self, f: &mut fmt::Formatter, string: String) -> fmt::Result {
+    pub fn elapsed<const SIZE: usize>(
+        self,
+        f: &mut fmt::Formatter,
+        string: String<SIZE>,
+    ) -> fmt::Result {
         #[cfg(feature = "colored")]
         if self.colored {
             return write!(f, " {}", string.yellow());
