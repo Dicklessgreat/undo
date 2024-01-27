@@ -1,22 +1,23 @@
+use heapless::String;
 use undo::{Add, At, History};
 
-const A: Add = Add('a');
-const B: Add = Add('b');
-const C: Add = Add('c');
-const D: Add = Add('d');
-const E: Add = Add('e');
-const F: Add = Add('f');
-const G: Add = Add('g');
-const H: Add = Add('h');
-const I: Add = Add('i');
-const J: Add = Add('j');
-const K: Add = Add('k');
-const L: Add = Add('l');
-const M: Add = Add('m');
-const N: Add = Add('n');
-const O: Add = Add('o');
-const P: Add = Add('p');
-const Q: Add = Add('q');
+const A: Add<256> = Add('a');
+const B: Add<256> = Add('b');
+const C: Add<256> = Add('c');
+const D: Add<256> = Add('d');
+const E: Add<256> = Add('e');
+const F: Add<256> = Add('f');
+const G: Add<256> = Add('g');
+const H: Add<256> = Add('h');
+const I: Add<256> = Add('i');
+const J: Add<256> = Add('j');
+const K: Add<256> = Add('k');
+const L: Add<256> = Add('l');
+const M: Add<256> = Add('m');
+const N: Add<256> = Add('n');
+const O: Add<256> = Add('o');
+const P: Add<256> = Add('p');
+const Q: Add<256> = Add('q');
 
 #[test]
 fn go_to() {
@@ -35,8 +36,8 @@ fn go_to() {
     // b
     // |
     // a
-    let mut target = String::new();
-    let mut history = History::new();
+    let mut target = String::<256>::new();
+    let mut history = History::<_, 32>::new();
     history.edit(&mut target, A);
     history.edit(&mut target, B);
     history.edit(&mut target, C);
@@ -101,9 +102,9 @@ fn go_to() {
 
 #[test]
 fn checkpoint() {
-    let mut target = String::new();
-    let mut history = History::new();
-    let mut checkpoint = history.checkpoint();
+    let mut target = String::<256>::new();
+    let mut history = History::<_, 32>::new();
+    let mut checkpoint = history.checkpoint::<16>();
 
     checkpoint.edit(&mut target, A);
     checkpoint.edit(&mut target, B);
@@ -125,7 +126,7 @@ fn checkpoint() {
 #[test]
 fn next_and_prev() {
     let mut target = String::new();
-    let mut history = History::new();
+    let mut history = History::<_, 32>::new();
     history.edit(&mut target, A);
     history.edit(&mut target, B);
     history.edit(&mut target, C);

@@ -1,16 +1,17 @@
+use heapless::String;
 use undo::{Add, Record};
 
-const A: Add = Add('a');
-const B: Add = Add('b');
-const C: Add = Add('c');
-const D: Add = Add('d');
-const E: Add = Add('e');
-const F: Add = Add('f');
+const A: Add<256> = Add('a');
+const B: Add<256> = Add('b');
+const C: Add<256> = Add('c');
+const D: Add<256> = Add('d');
+const E: Add<256> = Add('e');
+const F: Add<256> = Add('f');
 
 #[test]
 fn go_to() {
     let mut target = String::new();
-    let mut record = Record::new();
+    let mut record = Record::<_, 32>::new();
     record.edit(&mut target, A);
     record.edit(&mut target, B);
     record.edit(&mut target, C);
@@ -42,7 +43,7 @@ fn go_to() {
 #[test]
 fn edits() {
     let mut target = String::new();
-    let mut record = Record::new();
+    let mut record = Record::<_, 32>::new();
     record.edit(&mut target, A);
     record.edit(&mut target, B);
     let collected = record.entries().map(AsRef::as_ref).collect::<Vec<_>>();
@@ -52,7 +53,7 @@ fn edits() {
 #[test]
 fn checkpoint_saved() {
     let mut target = String::new();
-    let mut record = Record::new();
+    let mut record = Record::<_, 32>::new();
     record.edit(&mut target, A);
     record.edit(&mut target, B);
     record.edit(&mut target, C);
@@ -60,7 +61,7 @@ fn checkpoint_saved() {
     record.undo(&mut target).unwrap();
     record.undo(&mut target).unwrap();
     record.undo(&mut target).unwrap();
-    let mut cp = record.checkpoint();
+    let mut cp = record.checkpoint::<16>();
     cp.edit(&mut target, D);
     cp.edit(&mut target, E);
     cp.edit(&mut target, F);

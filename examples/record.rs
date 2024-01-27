@@ -1,8 +1,8 @@
+use heapless::String;
 use undo::{Add, Record};
-
 fn main() {
-    let mut target = String::new();
-    let mut record = Record::new();
+    let mut target = String::<256>::new();
+    let mut record = Record::<_, 32>::new();
 
     record.edit(&mut target, Add('a'));
     record.edit(&mut target, Add('b'));
@@ -18,5 +18,5 @@ fn main() {
     record.undo(&mut target);
     assert_eq!(target, "abcd");
 
-    println!("{}", record.display());
+    println!("{}", record.display::<256>());
 }

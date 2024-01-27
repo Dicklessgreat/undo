@@ -13,7 +13,7 @@ impl<const SIZE: usize> crate::Edit for Add<SIZE> {
     type Output = ();
 
     fn edit(&mut self, string: &mut String<SIZE>) {
-        string.push(self.0);
+        let _ = string.push(self.0);
     }
 
     fn undo(&mut self, string: &mut String<SIZE>) {

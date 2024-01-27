@@ -1,23 +1,28 @@
 use chrono::{DateTime, Local};
-use std::io;
+use heapless::String;
 use std::time::SystemTime;
+use std::{fmt::Write, io};
 use undo::{Add, At, History};
 
-fn custom_st_fmt(_: SystemTime, at: SystemTime) -> String {
+fn custom_st_fmt<const SIZE: usize>(_: SystemTime, at: SystemTime) -> String<SIZE> {
+    let mut result = String::<SIZE>::new();
     let dt = DateTime::<Local>::from(at);
-    dt.format("%H:%M:%S").to_string()
+    result
+        .write_fmt(format_args!("{}", dt.format("%H:%M:%S").to_string()))
+        .expect("enough space");
+    result
 }
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
-    let mut target = String::new();
-    let mut history = History::<_>::builder().limit(10).capacity(10).build();
+    let mut target = heapless::String::<256>::new();
+    let mut history = History::<_, 32>::builder().limit(10).build();
 
     loop {
         println!(
             "Enter a string. Use '<' to undo, '>' to redo, '*' to save, '?' to revert to save, '+' to switch to next branch, '-' to switch to previous branch, and '! i-j' for goto: "
         );
-        let mut buf = String::new();
+        let mut buf = std::string::String::new();
         let n = stdin.read_line(&mut buf)?;
         if n == 0 {
             return Ok(());
@@ -30,7 +35,7 @@ fn main() -> io::Result<()> {
         while let Some(c) = chars.next() {
             match c {
                 '!' => {
-                    let tail = chars.collect::<String>();
+                    let tail = chars.collect::<String<256>>();
                     let mut at = tail
                         .trim()
                         .split('-')
@@ -69,7 +74,7 @@ fn main() -> io::Result<()> {
             }
         }
 
-        println!("{}\n", history.display().set_st_fmt(&custom_st_fmt));
+        println!("{}\n", history.display::<256>().set_st_fmt(&custom_st_fmt));
         println!("Target: {target}");
     }
 }
