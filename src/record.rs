@@ -183,7 +183,7 @@ impl<E, const N: usize, S> Record<E, N, S> {
         };
 
         let mut tail = Deque::new();
-        while self.entries.len() < self.index {
+        for _ in self.index..self.entries.len() {
             let _ = tail.push_back(self.entries.pop_back().expect("in the range"));
         }
         (tail, rm_saved)
