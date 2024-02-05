@@ -65,13 +65,12 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
     }
 
     /// Cancels the changes and consumes the checkpoint.
-    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output, M> {
-        todo!("find rev() alternative!!");
+    pub fn cancel(mut self, target: &mut E::Target) -> Vec<E::Output, M> {
+        self.entries.as_mut_slice().reverse();
         self.entries
             .into_iter()
-            // .rev()
             .filter_map(|entry| match entry {
-                CheckpointEntry::Edit { saved, mut tail } => {
+                CheckpointEntry::Edit { saved, tail } => {
                     let output = self.record.undo(target)?;
                     self.record.entries.pop_back();
                     for en in tail {

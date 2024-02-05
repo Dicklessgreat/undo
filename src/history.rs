@@ -239,10 +239,8 @@ impl<E, const N: usize, S> History<E, N, S> {
             let _ = path.push((to, dest));
         }
 
-        todo!("find rev() alternative!!");
-
+        path.as_mut_slice().reverse();
         Some(path.into_iter())
-        //.rev())
     }
 
     fn nil_replace(&mut self, id: usize) -> Option<Branch<E, N>> {

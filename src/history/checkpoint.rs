@@ -58,11 +58,10 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
     }
 
     /// Cancels the changes and consumes the checkpoint.
-    pub fn cancel(self, target: &mut E::Target) -> Vec<E::Output, M> {
-        todo!("find rev() alternative!!");
+    pub fn cancel(mut self, target: &mut E::Target) -> Vec<E::Output, M> {
+        self.entries.as_mut_slice().reverse();
         self.entries
             .into_iter()
-            // .rev()
             .filter_map(|entry| match entry {
                 CheckpointEntry::Edit(root) => {
                     let output = self.history.undo(target)?;
@@ -71,7 +70,7 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
                     } else {
                         // If a new root was created when we edited earlier,
                         // we remove it and append the entries to the previous root.
-                        let mut branch = self.history.branches.remove(root);
+                        let branch = self.history.branches.remove(root);
                         debug_assert_eq!(branch.parent, self.history.head());
 
                         let new = At::new(root, self.history.record.head());
