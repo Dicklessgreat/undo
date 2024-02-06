@@ -76,7 +76,7 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
                         let new = At::new(root, self.history.record.head());
                         let (_, rm_saved) = self.history.record.rm_tail();
                         for en in branch.entries {
-                            let _ = self.history.record.entries.push_back(en);
+                            let _ = self.history.record.entries.push_front(en);
                         }
                         self.history.set_root(new, rm_saved);
                     }

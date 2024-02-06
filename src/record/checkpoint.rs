@@ -74,7 +74,7 @@ impl<E: Edit, const N: usize, const M: usize, S: Slot> Checkpoint<'_, E, N, M, S
                     let output = self.record.undo(target)?;
                     self.record.entries.pop_back();
                     for en in tail {
-                        let _ = self.record.entries.push_back(en);
+                        let _ = self.record.entries.push_front(en);
                     }
                     self.record.saved = self.record.saved.or(saved);
                     Some(output)
